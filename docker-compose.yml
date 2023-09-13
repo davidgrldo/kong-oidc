@@ -1,0 +1,15 @@
+version: '3.9'
+
+services:
+  kong:
+    build: .
+    user: root
+    environment:
+      KONG_DATABASE: "off"
+      KONG_PROXY_LISTEN: "0.0.0.0:8000"
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      KONG_DECLARATIVE_CONFIG: "/opt/kong/kong.yml"
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+      - "8444:8444"
