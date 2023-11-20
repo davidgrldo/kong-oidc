@@ -1,19 +1,19 @@
-_format_version: "2.1"
-_transform: true
+# _format_version: "2.1"
+# _transform: true
 
-services:
-- host: 103.189.234.51
-  name: keycloak_service
-  port: 8080
-  protocol: http
-  plugins:
-  - name: oidc
-    config:
-      discovery: http://103.250.11.93:8080/realms/allo-sandbox/.well-known/openid-configuration
-      client_id: allo-service
-      client_secret: 6dIMJfI8HYWAL5bOCNnB3wJm6WW00SZ7
-  routes:
-  - name: keycloak_route
-    paths:
-    - /keycloak
-    strip_path: true
+# services:
+#   - host: localhost
+#     name: keycloak
+#     port: 8080
+#     protocol: http
+#     plugins:
+#       - name: oidc
+#         config:
+#           discovery: http://localhost:8080/realms/allo-sandbox/.well-known/openid-configuration
+#           client_id: allo-service
+#           client_secret: kQ3i9a0UNvn3i7UBTOXZ3Ltan20Cn8pi
+#     routes:
+#       - name: keycloak_route
+#         paths:
+#           - /keycloak
+#         strip_path: true
