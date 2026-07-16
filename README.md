@@ -63,6 +63,15 @@ docker run --rm kong-oidc:2.0.0 luarocks show kong-oidc   # 2.0.0-1
 
 ### LuaRocks
 
+Install the published rock from LuaRocks (published under the `davidgrldo`
+namespace — the root `kong-oidc` name is held by the upstream Nokia project):
+
+```sh
+luarocks install davidgrldo/kong-oidc 2.0.0-1
+```
+
+Or build from a local checkout:
+
 ```sh
 cd plugins/oidc
 luarocks make kong-oidc-2.0.0-1.rockspec
