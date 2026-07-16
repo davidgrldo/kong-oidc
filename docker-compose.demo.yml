@@ -1,0 +1,19 @@
+# Optional Keycloak demo. Run together with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.demo.yml up
+#
+# Keycloak runs in dev mode with an internal dev-file database, so no external
+# datastore is required. Values are read from the environment (see .env.example);
+# safe placeholders keep `docker compose config` valid without a .env file.
+#
+# OIDC_CLIENT_ID / OIDC_CLIENT_SECRET are the credentials you set on a Keycloak
+# client: copy them into config/kong.yml when you enable the example service.
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1.2
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-change-me}
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "127.0.0.1:8080:8080"
+    command: start-dev
