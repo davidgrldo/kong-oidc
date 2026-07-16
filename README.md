@@ -7,6 +7,34 @@ RFC 7662 introspection, then injects the caller identity into upstream requests.
 This is a modified Apache-2.0 fork of the Nokia [`kong-oidc`](https://github.com/nokia/kong-oidc)
 plugin, modernized for Kong 3.x.
 
+## How it works
+
+Every request routed through the plugin runs the Kong `access` phase below. The
+plugin first strips any client-supplied identity headers (trust boundary), then
+either validates a bearer token by introspection or runs the browser
+authorization-code flow.
+
+```mermaid
+flowchart TD
+    Req([Client request hits Kong proxy]) --> Strip["Strip client-supplied<br/>X-Userinfo / X-ID-Token / X-Access-Token"]
+    Strip --> Filter{"Path in filters?<br/>(exact match)"}
+    Filter -- "yes (bypass)" --> Pass[Pass through to upstream]
+    Filter -- "no" --> Mode{"Bearer token present<br/>or bearer_only?"}
+    Mode -- "yes (API mode)" --> Intro["Introspect token<br/>(RFC 7662)"]
+    Intro --> Active{"Token active?"}
+    Active -- "yes" --> Inject["Inject verified identity headers"]
+    Active -- "no / invalid" --> Unauth["401 Unauthorized<br/>WWW-Authenticate: Bearer<br/>(no browser fallback)"]
+    Mode -- "no (browser mode)" --> Sess{"Valid session secret?<br/>(>= 32 bytes)"}
+    Sess -- "no" --> Err500["500 Authentication failed"]
+    Sess -- "yes" --> Auth["OIDC authorization-code flow<br/>+ encrypted session cookie"]
+    Auth --> AuthOk{"Authenticated?"}
+    AuthOk -- "yes" --> Inject
+    AuthOk -- "no" --> Recover{"recovery_page_path<br/>configured?"}
+    Recover -- "yes" --> Redirect["302 redirect to recovery page"]
+    Recover -- "no" --> Err500
+    Inject --> Up([Forward to upstream service])
+```
+
 ## Compatibility
 
 | Kong | Plugin | lua-resty-openidc |
