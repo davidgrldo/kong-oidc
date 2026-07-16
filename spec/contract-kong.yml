@@ -1,0 +1,15 @@
+_format_version: "3.0"
+services:
+  - name: echo
+    url: https://httpbin.org/anything
+    routes:
+      - name: echo
+        paths: ["/echo"]
+    plugins:
+      - name: oidc
+        config:
+          client_id: example
+          client_secret: example
+          discovery: https://issuer.example/.well-known/openid-configuration
+          redirect_uri: /callback
+          session_secret: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
