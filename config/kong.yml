@@ -1,19 +1,25 @@
-# _format_version: "2.1"
-# _transform: true
+_format_version: "3.0"
 
+# ---------------------------------------------------------------------------
+# Example DB-less configuration.
+#
+# Everything below is commented out so `docker compose up` starts with a clean,
+# empty Kong. Replace the placeholders with your own issuer and client values,
+# generate a 32-byte session secret with `openssl rand -base64 32`, then remove
+# the leading `#` to enable the service.
+#
 # services:
-#   - host: localhost
-#     name: keycloak
-#     port: 8080
-#     protocol: http
+#   - name: echo
+#     url: https://httpbin.org/anything
+#     routes:
+#       - name: echo
+#         paths: ["/echo"]
+#         strip_path: true
 #     plugins:
 #       - name: oidc
 #         config:
-#           discovery: http://localhost:8080/realms/allo-sandbox/.well-known/openid-configuration
-#           client_id: allo-service
-#           client_secret: kQ3i9a0UNvn3i7UBTOXZ3Ltan20Cn8pi
-#     routes:
-#       - name: keycloak_route
-#         paths:
-#           - /keycloak
-#         strip_path: true
+#           client_id: your-client-id
+#           client_secret: your-client-secret
+#           discovery: https://your-issuer/.well-known/openid-configuration
+#           redirect_uri: /callback
+#           session_secret: REPLACE_WITH_opsl_rand_base64_32
