@@ -64,3 +64,9 @@ sed '$a\
 ' spec/contract-kong.yml > "$tmp/empty-filter.yml"
 rejects "empty filter" "$tmp/empty-filter.yml" \
   "filter entries must be non-empty absolute paths"
+
+sed '$a\
+          token_endpoint_auth_method: private_key_jwt
+' spec/contract-kong.yml > "$tmp/private-key-jwt.yml"
+rejects "unsupported private key JWT authentication" "$tmp/private-key-jwt.yml" \
+  "expected one of"
