@@ -70,3 +70,19 @@ sed '$a\
 ' spec/contract-kong.yml > "$tmp/private-key-jwt.yml"
 rejects "unsupported private key JWT authentication" "$tmp/private-key-jwt.yml" \
   "expected one of"
+
+echo "==> checking README documentation"
+if [ ! -s README.md ]; then
+  echo "README.md is missing or empty" >&2
+  exit 1
+fi
+
+for heading in Compatibility Installation Configuration Security DB-less \
+               PostgreSQL "Session secret" "Identity headers" Filters \
+               Troubleshooting Upgrading License; do
+  if ! grep -F "## $heading" README.md >/dev/null; then
+    echo "README.md missing heading: $heading" >&2
+    exit 1
+  fi
+done
+echo "README documentation complete"

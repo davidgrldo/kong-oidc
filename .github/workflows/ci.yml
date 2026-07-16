@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lua syntax check
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work kong:3.9.3 \
+            sh -ec 'find plugins spec -name "*.lua" -exec luajit -bl {} >/dev/null \;'
+
+      - name: Unit tests
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work kong:3.9.3 \
+            sh -ec 'LUA_PATH="./spec/?.lua;./plugins/oidc/?.lua;./plugins/oidc/?/init.lua;;" lua spec/run.lua'
+
+      - name: Schema contract tests
+        run: sh scripts/contract-test.sh
+
+      - name: Build image
+        run: docker build --no-cache -t kong-oidc:ci .
+
+      - name: DB-less smoke test
+        run: sh scripts/smoke-test.sh
