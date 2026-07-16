@@ -1,83 +1,47 @@
-local BasePlugin = require "kong.plugins.base_plugin"
-local OidcHandler = BasePlugin:extend()
-local utils = require("kong.plugins.oidc.utils")
-local filter = require("kong.plugins.oidc.filter")
-local session = require("kong.plugins.oidc.session")
+local openidc = require "resty.openidc"
+local filter = require "kong.plugins.oidc.filter"
+local session = require "kong.plugins.oidc.session"
+local utils = require "kong.plugins.oidc.utils"
 
-OidcHandler.PRIORITY = 1000
+local Handler = { VERSION = "2.0.0", PRIORITY = 1000 }
 
-
-function OidcHandler:new()
-  OidcHandler.super.new(self, "oidc")
+local function unauthorized(realm)
+  return kong.response.exit(401, { message = "Unauthorized" }, {
+    ["WWW-Authenticate"] = 'Bearer realm="' .. realm .. '"',
+  })
 end
 
-function OidcHandler:access(config)
-  OidcHandler.super.access(self)
-  local oidcConfig = utils.get_options(config, ngx)
+function Handler:access(config)
+  utils.clear_identity_headers()
+  if not filter.should_process(config.filters, kong.request.get_path()) then return end
 
-  if filter.shouldProcessRequest(oidcConfig) then
-    session.configure(config)
-    handle(oidcConfig)
-  else
-    ngx.log(ngx.DEBUG, "OidcHandler ignoring request, path: " .. ngx.var.request_uri)
-  end
-
-  ngx.log(ngx.DEBUG, "OidcHandler done")
-end
-
-function handle(oidcConfig)
-  local response
-  if oidcConfig.introspection_endpoint then
-    response = introspect(oidcConfig)
-    if response then
-      utils.injectUser(response)
+  local options = utils.get_options(config)
+  local bearer = utils.bearer_present(kong.request.get_header("authorization"))
+  if bearer or config.bearer_only then
+    local response, err = openidc.introspect(options)
+    if err or not response or response.active == false then
+      kong.log.err("OIDC introspection failed: ", err or "inactive token")
+      return unauthorized(config.realm)
     end
+    utils.inject_identity({ user = response })
+    return
   end
 
-  if response == nil then
-    response = make_oidc(oidcConfig)
-    if response then
-      if (response.user) then
-        utils.injectUser(response.user)
-      end
-      if (response.access_token) then
-        utils.injectAccessToken(response.access_token)
-      end
-      if (response.id_token) then
-        utils.injectIDToken(response.id_token)
-      end
-    end
+  local session_options, session_err = session.options(config)
+  if not session_options then
+    kong.log.err("OIDC session configuration failed: ", session_err)
+    return kong.response.exit(500, { message = "Authentication failed" })
   end
-end
 
-function make_oidc(oidcConfig)
-  ngx.log(ngx.DEBUG, "OidcHandler calling authenticate, requested path: " .. ngx.var.request_uri)
-  local res, err = require("resty.openidc").authenticate(oidcConfig)
+  local response, err = openidc.authenticate(options, nil, nil, session_options)
   if err then
-    if oidcConfig.recovery_page_path then
-      ngx.log(ngx.DEBUG, "Entering recovery page: " .. oidcConfig.recovery_page_path)
-      ngx.redirect(oidcConfig.recovery_page_path)
+    kong.log.err("OIDC authentication failed: ", err)
+    if config.recovery_page_path then
+      return kong.response.exit(302, nil, { Location = config.recovery_page_path })
     end
-    utils.exit(500, err, ngx.HTTP_INTERNAL_SERVER_ERROR)
+    return kong.response.exit(500, { message = "Authentication failed" })
   end
-  return res
+  if response then utils.inject_identity(response) end
 end
 
-function introspect(oidcConfig)
-  if utils.has_bearer_access_token() or oidcConfig.bearer_only == "yes" then
-    local res, err = require("resty.openidc").introspect(oidcConfig)
-    if err then
-      if oidcConfig.bearer_only == "yes" then
-        ngx.header["WWW-Authenticate"] = 'Bearer realm="' .. oidcConfig.realm .. '",error="' .. err .. '"'
-        utils.exit(ngx.HTTP_UNAUTHORIZED, err, ngx.HTTP_UNAUTHORIZED)
-      end
-      return nil
-    end
-    ngx.log(ngx.DEBUG, "OidcHandler introspect succeeded, requested path: " .. ngx.var.request_uri)
-    return res
-  end
-  return nil
-end
-
-
-return OidcHandler
+return Handler
