@@ -1,7 +1,9 @@
 package = "kong-oidc"
 version = "2.0.0-1"
 source = {
-  url = "git+https://github.com/davidgrldo/kong-oidc",
+  url = "git+https://github.com/davidgrldo/kong-oidc.git",
+  tag = "v2.0.0",
+  dir = "kong-oidc/plugins/oidc",
 }
 description = {
   summary = "OpenID Connect and token introspection plugin for Kong Gateway",
