@@ -1,6 +1,9 @@
 .worktrees/
 .superpowers/
 
+# Superpowers planning docs (internal)
+docs/superpowers/
+
 # Local environment files (keep .env.example tracked)
 .env
 .env.*
