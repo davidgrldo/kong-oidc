@@ -45,3 +45,11 @@ jobs:
 
       - name: Keycloak end-to-end auth test
         run: sh scripts/integration-test.sh
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Keycloak browser auth-code flow test
+        run: sh scripts/browser-test.sh
