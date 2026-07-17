@@ -1,38 +1,77 @@
 # kong-oidc
 
-OpenID Connect and token introspection plugin for Kong Gateway. Authenticates
-browser sessions via the authorization code flow and validates bearer tokens via
-RFC 7662 introspection, then injects the caller identity into upstream requests.
+> **Drop-in OpenID Connect & token introspection for Kong Gateway 3.x** — turn any
+> upstream service into an authenticated one without touching its code.
 
-This is a modified Apache-2.0 fork of the Nokia [`kong-oidc`](https://github.com/nokia/kong-oidc)
-plugin, modernized for Kong 3.x.
+[![CI](https://github.com/davidgrldo/kong-oidc/actions/workflows/ci.yml/badge.svg)](https://github.com/davidgrldo/kong-oidc/actions/workflows/ci.yml)
+[![Kong](https://img.shields.io/badge/Kong-OSS%203.9.3-002659?logo=kong&logoColor=white)](https://konghq.com/)
+[![lua-resty-openidc](https://img.shields.io/badge/lua--resty--openidc-1.8.0-2C2D72?logo=lua&logoColor=white)](https://github.com/zmartzone/lua-resty-openidc)
+[![LuaRocks](https://img.shields.io/badge/LuaRocks-davidgrldo%2Fkong--oidc%202.0.0-51A0CF?logo=lua&logoColor=white)](https://luarocks.org/modules/davidgrldo/kong-oidc)
+[![License](https://img.shields.io/badge/License-Apache%202.0-D22128.svg)](LICENSE)
+
+Kong sits in front of your services and **kong-oidc** makes it the identity
+checkpoint: browser traffic goes through the OIDC authorization-code flow, API
+traffic is validated by RFC 7662 token introspection, and only a **verified,
+un-spoofable** identity is forwarded upstream.
+
+```mermaid
+flowchart LR
+    Browser([👤 Browser]):::client -->|session cookie| Kong
+    API([🤖 API client]):::client -->|Bearer token| Kong
+    Kong{{"🛡️ Kong Gateway<br/><b>+ kong-oidc</b>"}}:::gw
+    IdP[("🔑 OIDC Provider<br/>Keycloak / Auth0 / …")]:::idp
+    Up1[Service A]:::up
+    Up2[Service B]:::up
+    Kong <-->|"discover · authorize · introspect"| IdP
+    Kong -->|"X-Userinfo · X-ID-Token · X-Access-Token"| Up1
+    Kong --> Up2
+
+    classDef client fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+    classDef gw fill:#002659,stroke:#001a3d,color:#ffffff
+    classDef idp fill:#fff7ed,stroke:#f59e0b,color:#7c2d12
+    classDef up fill:#ecfdf5,stroke:#10b981,color:#064e3b
+```
+
+## Why use it
+
+- 🔐 **Two auth modes, one plugin** — interactive browser login *and* machine-to-machine bearer tokens.
+- 🚫 **Fail-closed by design** — an invalid bearer token gets `401`, never a silent browser redirect loop.
+- 🧱 **Anti-spoofing trust boundary** — client-supplied identity headers are stripped before anything else runs.
+- 📌 **Reproducible builds** — Kong image, base rock, and dependency all pinned to a digest/checksum.
+- ✅ **Tested three ways** — unit, schema-contract (`kong config parse`), and a full container smoke test in CI.
 
 ## How it works
 
 Every request routed through the plugin runs the Kong `access` phase below. The
 plugin first strips any client-supplied identity headers (trust boundary), then
 either validates a bearer token by introspection or runs the browser
-authorization-code flow.
+authorization-code flow. Green paths inject a verified identity upstream; red
+paths reject the request.
 
 ```mermaid
 flowchart TD
-    Req([Client request hits Kong proxy]) --> Strip["Strip client-supplied<br/>X-Userinfo / X-ID-Token / X-Access-Token"]
-    Strip --> Filter{"Path in filters?<br/>(exact match)"}
-    Filter -- "yes (bypass)" --> Pass[Pass through to upstream]
-    Filter -- "no" --> Mode{"Bearer token present<br/>or bearer_only?"}
-    Mode -- "yes (API mode)" --> Intro["Introspect token<br/>(RFC 7662)"]
-    Intro --> Active{"Token active?"}
-    Active -- "yes" --> Inject["Inject verified identity headers"]
-    Active -- "no / invalid" --> Unauth["401 Unauthorized<br/>WWW-Authenticate: Bearer<br/>(no browser fallback)"]
-    Mode -- "no (browser mode)" --> Sess{"Valid session secret?<br/>(>= 32 bytes)"}
-    Sess -- "no" --> Err500["500 Authentication failed"]
-    Sess -- "yes" --> Auth["OIDC authorization-code flow<br/>+ encrypted session cookie"]
-    Auth --> AuthOk{"Authenticated?"}
+    Req([Client request hits Kong proxy]) --> Strip["🧹 Strip client-supplied<br/>X-Userinfo / X-ID-Token / X-Access-Token"]:::step
+    Strip --> Filter{"Path in filters?<br/>(exact match)"}:::decision
+    Filter -- "yes (bypass)" --> Pass[Pass through to upstream]:::ok
+    Filter -- "no" --> Mode{"Bearer token present<br/>or bearer_only?"}:::decision
+    Mode -- "yes (API mode)" --> Intro["Introspect token<br/>(RFC 7662)"]:::step
+    Intro --> Active{"Token active?"}:::decision
+    Active -- "yes" --> Inject["✅ Inject verified identity headers"]:::ok
+    Active -- "no / invalid" --> Unauth["⛔ 401 Unauthorized<br/>WWW-Authenticate: Bearer<br/>(no browser fallback)"]:::bad
+    Mode -- "no (browser mode)" --> Sess{"Valid session secret?<br/>(>= 32 bytes)"}:::decision
+    Sess -- "no" --> Err500["⛔ 500 Authentication failed"]:::bad
+    Sess -- "yes" --> Auth["OIDC authorization-code flow<br/>+ encrypted session cookie"]:::step
+    Auth --> AuthOk{"Authenticated?"}:::decision
     AuthOk -- "yes" --> Inject
-    AuthOk -- "no" --> Recover{"recovery_page_path<br/>configured?"}
-    Recover -- "yes" --> Redirect["302 redirect to recovery page"]
+    AuthOk -- "no" --> Recover{"recovery_page_path<br/>configured?"}:::decision
+    Recover -- "yes" --> Redirect["↪️ 302 redirect to recovery page"]:::step
     Recover -- "no" --> Err500
-    Inject --> Up([Forward to upstream service])
+    Inject --> Up([Forward to upstream service]):::ok
+
+    classDef step fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a
+    classDef decision fill:#fefce8,stroke:#eab308,color:#713f12
+    classDef ok fill:#ecfdf5,stroke:#10b981,color:#064e3b
+    classDef bad fill:#fef2f2,stroke:#ef4444,color:#7f1d1d
 ```
 
 ## Compatibility
