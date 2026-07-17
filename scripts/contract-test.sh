@@ -66,6 +66,12 @@ rejects "empty filter" "$tmp/empty-filter.yml" \
   "filter entries must be non-empty absolute paths"
 
 sed '$a\
+          realm: kong\"evil
+' spec/contract-kong.yml > "$tmp/quoted-realm.yml"
+rejects "realm with double quote" "$tmp/quoted-realm.yml" \
+  "realm must not contain double quotes"
+
+sed '$a\
           token_endpoint_auth_method: private_key_jwt
 ' spec/contract-kong.yml > "$tmp/private-key-jwt.yml"
 rejects "unsupported private key JWT authentication" "$tmp/private-key-jwt.yml" \
