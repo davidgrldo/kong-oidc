@@ -1,0 +1,54 @@
+# Browser authorization-code flow e2e stack: a real Keycloak issuer, an echo
+# upstream, Kong running the plugin in browser mode, and a headless-Chromium
+# (Playwright) runner. Driven by scripts/browser-test.sh. The runner lives on
+# the compose network so `kong`/`keycloak` resolve identically for the browser
+# and for Kong (front-channel and back-channel see the same issuer host).
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3
+    command: start-dev --import-realm
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://keycloak:8080
+      KC_HOSTNAME_STRICT: "false"
+    volumes:
+      - ./realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  httpbin:
+    image: kennethreitz/httpbin
+
+  kong:
+    build:
+      context: ../..
+    depends_on:
+      - keycloak
+      - httpbin
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /opt/kong/kong.yml
+      KONG_PROXY_LISTEN: "0.0.0.0:8000"
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      KONG_PLUGINS: "bundled,oidc"
+    volumes:
+      - ./kong-browser.yml:/opt/kong/kong.yml:ro
+    ports:
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8001:8001"
+
+  playwright:
+    # This image ships the browsers (/ms-playwright) but not the playwright npm
+    # package, so install it (matching the image tag; browsers are already
+    # present, so no re-download) and point NODE_PATH at the global modules.
+    image: mcr.microsoft.com/playwright:v1.49.1-noble
+    depends_on:
+      - kong
+    working_dir: /test
+    volumes:
+      - ./browser-test.js:/test/browser-test.js:ro
+    entrypoint:
+      - sh
+      - -c
+      - npm i -g playwright@1.49.1 >/tmp/npm-install.log 2>&1 && NODE_PATH=$$(npm root -g) node /test/browser-test.js

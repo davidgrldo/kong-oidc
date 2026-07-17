@@ -272,14 +272,22 @@ Run the test suite to isolate behavior:
 ```sh
 sh scripts/contract-test.sh      # Kong schema/contract checks
 sh scripts/smoke-test.sh         # full container build + DB-less smoke
-sh scripts/integration-test.sh   # end-to-end auth against a real Keycloak
+sh scripts/integration-test.sh   # end-to-end bearer/API auth against a real Keycloak
+sh scripts/browser-test.sh       # end-to-end browser auth-code flow against a real Keycloak
 ```
 
-The integration test stands up a real Keycloak issuer, an echo upstream, and
-Kong running the plugin, then proves the bearer/API path end to end: a valid
-token yields `200` with an injected, verified `X-Userinfo`; a forged client
-`X-Userinfo` is stripped; and invalid or missing tokens return `401`. It needs
-Docker and takes a minute or two while Keycloak boots.
+Both end-to-end tests stand up a real Keycloak issuer, an echo upstream, and
+Kong running the plugin. They need Docker and take a minute or two while
+Keycloak boots.
+
+- **`integration-test.sh`** proves the bearer/API path: a valid token yields
+  `200` with an injected, verified `X-Userinfo`; a forged client `X-Userinfo`
+  is stripped; and invalid or missing tokens return `401`.
+- **`browser-test.sh`** drives the authorization-code flow with a headless
+  Chromium (Playwright): an unauthenticated request is redirected to the
+  Keycloak login, a successful login lands back on the app with a verified
+  identity and an encrypted session cookie, the session is reused without
+  re-login, and `logout` clears it.
 
 ## Upgrading
 

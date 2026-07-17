@@ -1,0 +1,20 @@
+_format_version: "3.0"
+services:
+  - name: echo
+    url: http://httpbin:80
+    routes:
+      - name: echo
+        # Catch-all so both the protected paths and the OIDC callback
+        # (/callback) route to this service and run the plugin.
+        paths: ["/"]
+    plugins:
+      - name: oidc
+        config:
+          client_id: kong-client
+          client_secret: kong-secret
+          discovery: http://keycloak:8080/realms/kong/.well-known/openid-configuration
+          redirect_uri: http://kong:8000/callback
+          # base64 of "0123456789abcdef0123456789abcdef" (32 bytes) — test only.
+          session_secret: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+          bearer_only: false
+          allow_insecure_http: true
