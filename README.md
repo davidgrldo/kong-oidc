@@ -90,7 +90,7 @@ All options live under the plugin's `config` record.
 | `client_secret` | string | *required* | OAuth/OIDC client secret. |
 | `discovery` | string | *required* | Issuer `.well-known/openid-configuration` URL. Must be HTTPS unless `allow_insecure_http` is set. |
 | `introspection_endpoint` | string | *(none)* | RFC 7662 introspection endpoint. Required when `bearer_only` is true. |
-| `timeout` | number | *(none)* | HTTP timeout (seconds) for OIDC calls. |
+| `timeout` | number | *(none)* | HTTP timeout in **milliseconds** for OIDC calls (passed to `lua-resty-http` `set_timeout`). |
 | `introspection_endpoint_auth_method` | one_of | `client_secret_basic` | `client_secret_basic` or `client_secret_post`. |
 | `token_endpoint_auth_method` | one_of | `client_secret_post` | `client_secret_basic`, `client_secret_post`, or `client_secret_jwt`. |
 | `bearer_only` | boolean | `false` | When true, only bearer-token introspection is used (no browser flow). |
@@ -114,6 +114,12 @@ All options live under the plugin's `config` record.
 - **Bearer/API flow** (`bearer_only=true`): every request must present a valid
   `Authorization: Bearer <token>` header, validated by introspection. An invalid
   or missing bearer token returns `401` **without** a browser fallback.
+
+Note that even in browser mode, any request carrying an `Authorization: Bearer`
+header is routed to introspection (never to the browser flow). If
+`introspection_endpoint` is not configured and the issuer's discovery document
+does not publish one, such requests always fail with `401` — configure
+`introspection_endpoint` explicitly if mixed traffic is expected.
 
 ## Security
 

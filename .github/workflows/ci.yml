@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -27,7 +28,7 @@ jobs:
         run: sh scripts/contract-test.sh
 
       - name: Build image
-        run: docker build --no-cache -t kong-oidc:ci .
+        run: docker build -t kong-oidc:ci .
 
       - name: DB-less smoke test
         run: sh scripts/smoke-test.sh

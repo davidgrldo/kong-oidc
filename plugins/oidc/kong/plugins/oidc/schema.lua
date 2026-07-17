@@ -31,6 +31,11 @@ local function validate(config)
   return true
 end
 
+local function validate_realm(value)
+  if not value:find('"') then return true end
+  return nil, "realm must not contain double quotes"
+end
+
 local function validate_filter(value)
   if value ~= "" and value:sub(1, 1) == "/" then return true end
   return nil, "filter entries must be non-empty absolute paths"
@@ -55,7 +60,7 @@ return {
               one_of = { "client_secret_basic", "client_secret_post" },
           } },
           { bearer_only = { type = "boolean", default = false } },
-          { realm = { type = "string", default = "kong" } },
+          { realm = { type = "string", default = "kong", custom_validator = validate_realm } },
           { redirect_uri = { type = "string" } },
           { scope = { type = "string", default = "openid" } },
           { response_type = { type = "string", default = "code" } },
