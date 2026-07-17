@@ -19,6 +19,11 @@ jobs:
           docker run --rm -v "$PWD:/work" -w /work kong:3.9.3 \
             sh -ec 'find plugins spec -name "*.lua" -exec luajit -bl {} >/dev/null \;'
 
+      - name: Rockspec lint
+        run: |
+          docker run --rm -v "$PWD/plugins/oidc:/r" -w /r kong:3.9.3 \
+            luarocks lint kong-oidc-2.0.0-1.rockspec
+
       - name: Unit tests
         run: |
           docker run --rm -v "$PWD:/work" -w /work kong:3.9.3 \

@@ -92,7 +92,7 @@ Plugin version `2.0.0` intentionally breaks configuration compatibility with the
 ### Docker (recommended)
 
 The included `Dockerfile` builds a reproducible image on `kong:3.9.3` that
-installs the plugin from its LuaRock:
+installs the plugin from a local checkout with `luarocks make`:
 
 ```sh
 docker build -t kong-oidc:2.0.0 .
@@ -100,20 +100,27 @@ docker run --rm kong-oidc:2.0.0 kong version      # 3.9.3
 docker run --rm kong-oidc:2.0.0 luarocks show kong-oidc   # 2.0.0-1
 ```
 
-### LuaRocks
+### LuaRocks (local checkout)
 
-Install the published rock from LuaRocks (published under the `davidgrldo`
-namespace — the root `kong-oidc` name is held by the upstream Nokia project):
-
-```sh
-luarocks install davidgrldo/kong-oidc 2.0.0-1
-```
-
-Or build from a local checkout:
+The most reliable install is from a local checkout:
 
 ```sh
 cd plugins/oidc
 luarocks make kong-oidc-2.0.0-1.rockspec
+```
+
+### LuaRocks (published rock)
+
+The rock is published under the `davidgrldo` namespace (the root `kong-oidc` name
+is held by the upstream Nokia project). Do **not** use `luarocks install
+davidgrldo/kong-oidc` directly — LuaRocks `3.12.2` (shipped in `kong:3.9.3`) has a
+[namespace-write bug](https://github.com/luarocks/luarocks/issues) that crashes on
+namespaced installs. Download the rock and install it by file path instead, which
+bypasses namespace resolution:
+
+```sh
+luarocks download davidgrldo/kong-oidc 2.0.0-1
+luarocks install ./kong-oidc-2.0.0-1.src.rock
 ```
 
 Then set `KONG_PLUGINS=bundled,oidc` (or `plugins = bundled, oidc` in `kong.conf`)
