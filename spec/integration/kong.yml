@@ -1,0 +1,18 @@
+_format_version: "3.0"
+services:
+  - name: echo
+    url: http://httpbin:80
+    routes:
+      - name: echo
+        paths: ["/echo"]
+        strip_path: true
+    plugins:
+      - name: oidc
+        config:
+          client_id: kong-client
+          client_secret: kong-secret
+          discovery: http://keycloak:8080/realms/kong/.well-known/openid-configuration
+          introspection_endpoint: http://keycloak:8080/realms/kong/protocol/openid-connect/token/introspect
+          introspection_endpoint_auth_method: client_secret_basic
+          bearer_only: true
+          allow_insecure_http: true
