@@ -270,9 +270,16 @@ management network and bind it to loopback where possible.
 Run the test suite to isolate behavior:
 
 ```sh
-sh scripts/contract-test.sh   # Kong schema/contract checks
-sh scripts/smoke-test.sh      # full container build + DB-less smoke
+sh scripts/contract-test.sh      # Kong schema/contract checks
+sh scripts/smoke-test.sh         # full container build + DB-less smoke
+sh scripts/integration-test.sh   # end-to-end auth against a real Keycloak
 ```
+
+The integration test stands up a real Keycloak issuer, an echo upstream, and
+Kong running the plugin, then proves the bearer/API path end to end: a valid
+token yields `200` with an injected, verified `X-Userinfo`; a forged client
+`X-Userinfo` is stripped; and invalid or missing tokens return `401`. It needs
+Docker and takes a minute or two while Keycloak boots.
 
 ## Upgrading
 

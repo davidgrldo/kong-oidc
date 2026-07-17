@@ -37,3 +37,11 @@ jobs:
 
       - name: DB-less smoke test
         run: sh scripts/smoke-test.sh
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Keycloak end-to-end auth test
+        run: sh scripts/integration-test.sh
