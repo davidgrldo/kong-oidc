@@ -27,6 +27,8 @@ local function setup()
     ctx = {},
     encode_base64 = function(v) return v end,
     decode_base64 = function() return string.rep("s", 32) end,
+    md5 = function(v) return v end,
+    time = function() return 1000 end,
   }
   state.ctx = ngx.ctx
 
@@ -54,6 +56,21 @@ local function setup()
       state.exits[#state.exits + 1] = { status = status, body = body, headers = headers }
       return state.exits[#state.exits]
     end },
+    client = { authenticate = function(consumer, credential)
+      ngx.ctx.authenticated_consumer = consumer
+      ngx.ctx.authenticated_credential = credential
+    end },
+    cache = {
+      store = {},
+      get = function(self, key, _opts, cb)
+        local hit = self.store[key]
+        if hit ~= nil then return hit end
+        local value, err = cb()
+        if err then return nil, err end
+        self.store[key] = value
+        return value
+      end,
+    },
     log = { err = function(...)
       local parts = {}
       for i = 1, select("#", ...) do parts[i] = tostring(select(i, ...)) end
@@ -142,6 +159,50 @@ t.test("filtered request clears headers without authenticating", function()
     "clear:X-Access-Token",
     "path",
   }, ","))
+end)
+
+t.test("caching reuses one introspection across requests with the same token", function()
+  local state = setup()
+  state.authorization = "Bearer valid"
+  state.config.introspection_cache_ttl = 60
+  local calls = 0
+  state.introspect = function()
+    calls = calls + 1
+    return { active = true, sub = "user-1", exp = 9999999999 }
+  end
+  state.handler:access(state.config)
+  state.handler:access(state.config)
+  t.equal(calls, 1)
+  t.equal(state.ctx.authenticated_credential.sub, "user-1")
+end)
+
+t.test("caching disabled introspects on every request", function()
+  local state = setup()
+  state.authorization = "Bearer valid"
+  local calls = 0
+  state.introspect = function()
+    calls = calls + 1
+    return { active = true, sub = "user-1" }
+  end
+  state.handler:access(state.config)
+  state.handler:access(state.config)
+  t.equal(calls, 2)
+end)
+
+t.test("caching does not store failed introspection", function()
+  local state = setup()
+  state.authorization = "Bearer valid"
+  state.config.introspection_cache_ttl = 60
+  local calls = 0
+  state.introspect = function()
+    calls = calls + 1
+    return nil, "invalid token"
+  end
+  local first = state.handler:access(state.config)
+  local second = state.handler:access(state.config)
+  t.equal(calls, 2)
+  t.equal(first.status, 401)
+  t.equal(second.status, 401)
 end)
 
 t.test("browser errors are generic and session options are explicit", function()

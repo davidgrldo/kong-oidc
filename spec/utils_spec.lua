@@ -24,6 +24,13 @@ t.test("detects bearer case insensitively", function()
   t.equal(utils.bearer_present({ "Bearer a", "Bearer b" }), false)
 end)
 
+t.test("extracts the bearer token value", function()
+  t.equal(utils.bearer_token("Bearer abc.def"), "abc.def")
+  t.equal(utils.bearer_token("bearer  xyz"), "xyz")
+  t.equal(utils.bearer_token("Basic zzz"), nil)
+  t.equal(utils.bearer_token({ "Bearer a" }), nil)
+end)
+
 t.test("maps secure defaults", function()
   local options = utils.get_options({
     client_id = "client", client_secret = "secret",
