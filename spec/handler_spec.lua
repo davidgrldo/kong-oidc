@@ -107,7 +107,7 @@ end
 
 t.test("exports Kong 3 handler metadata", function()
   local state = setup()
-  t.equal(state.handler.VERSION, "2.0.0")
+  t.equal(state.handler.VERSION, "2.1.0")
   t.equal(state.handler.PRIORITY, 1000)
 end)
 

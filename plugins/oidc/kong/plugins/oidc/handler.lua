@@ -3,7 +3,7 @@ local filter = require "kong.plugins.oidc.filter"
 local session = require "kong.plugins.oidc.session"
 local utils = require "kong.plugins.oidc.utils"
 
-local Handler = { VERSION = "2.0.0", PRIORITY = 1000 }
+local Handler = { VERSION = "2.1.0", PRIORITY = 1000 }
 
 local function unauthorized(realm)
   return kong.response.exit(401, { message = "Unauthorized" }, {

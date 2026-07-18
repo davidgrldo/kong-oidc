@@ -10,7 +10,7 @@ USER root
 RUN --mount=type=bind,from=build-inputs,source=/,target=/tmp/build \
   luarocks install /tmp/build/lua-resty-openidc-1.8.0-1.src.rock && \
   cd /tmp/build/kong-oidc && \
-  luarocks make kong-oidc-2.0.0-1.rockspec
+  luarocks make kong-oidc-2.1.0-1.rockspec
 
 ENV KONG_PLUGINS=bundled,oidc
 USER kong

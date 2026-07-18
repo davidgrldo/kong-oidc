@@ -8,7 +8,7 @@
 [![CI](https://github.com/davidgrldo/kong-oidc/actions/workflows/ci.yml/badge.svg)](https://github.com/davidgrldo/kong-oidc/actions/workflows/ci.yml)
 [![Kong](https://img.shields.io/badge/Kong-OSS%203.9.3-002659?logo=kong&logoColor=white)](https://konghq.com/)
 [![lua-resty-openidc](https://img.shields.io/badge/lua--resty--openidc-1.8.0-2C2D72?logo=lua&logoColor=white)](https://github.com/zmartzone/lua-resty-openidc)
-[![LuaRocks](https://img.shields.io/badge/LuaRocks-davidgrldo%2Fkong--oidc%202.0.0-51A0CF?logo=lua&logoColor=white)](https://luarocks.org/modules/davidgrldo/kong-oidc)
+[![LuaRocks](https://img.shields.io/badge/LuaRocks-davidgrldo%2Fkong--oidc%202.1.0-51A0CF?logo=lua&logoColor=white)](https://luarocks.org/modules/davidgrldo/kong-oidc)
 [![License](https://img.shields.io/badge/License-Apache%202.0-D22128.svg)](LICENSE)
 
 Kong sits in front of your services and **kong-oidc** makes it the identity
@@ -80,13 +80,13 @@ flowchart TD
 
 | Kong | Plugin | lua-resty-openidc |
 |------|--------|-------------------|
-| OSS `3.9.3` | `2.0.0` | `1.8.0-1` |
+| OSS `3.9.3` | `2.1.0` | `1.8.0-1` |
 
 The supported baseline is exactly **Kong OSS 3.9.3**. It is the open-source
 build distributed by the Kong community, not a vendor-backed LTS release. Do not
 configure it against a proprietary/Enterprise-only gateway image.
 
-Plugin version `2.0.0` intentionally breaks configuration compatibility with the
+The `2.x` line intentionally breaks configuration compatibility with the
 1.x line (see [Upgrading](#upgrading)).
 
 ## Installation
@@ -97,9 +97,9 @@ The included `Dockerfile` builds a reproducible image on `kong:3.9.3` that
 installs the plugin from a local checkout with `luarocks make`:
 
 ```sh
-docker build -t kong-oidc:2.0.0 .
-docker run --rm kong-oidc:2.0.0 kong version      # 3.9.3
-docker run --rm kong-oidc:2.0.0 luarocks show kong-oidc   # 2.0.0-1
+docker build -t kong-oidc:2.1.0 .
+docker run --rm kong-oidc:2.1.0 kong version      # 3.9.3
+docker run --rm kong-oidc:2.1.0 luarocks show kong-oidc   # 2.1.0-1
 ```
 
 ### LuaRocks (local checkout)
@@ -108,7 +108,7 @@ The most reliable install is from a local checkout:
 
 ```sh
 cd plugins/oidc
-luarocks make kong-oidc-2.0.0-1.rockspec
+luarocks make kong-oidc-2.1.0-1.rockspec
 ```
 
 ### LuaRocks (published rock)
@@ -121,8 +121,8 @@ namespaced installs. Download the rock and install it by file path instead, whic
 bypasses namespace resolution:
 
 ```sh
-luarocks download davidgrldo/kong-oidc 2.0.0-1
-luarocks install ./kong-oidc-2.0.0-1.src.rock
+luarocks download davidgrldo/kong-oidc 2.1.0-1
+luarocks install ./kong-oidc-2.1.0-1.src.rock
 ```
 
 Then set `KONG_PLUGINS=bundled,oidc` (or `plugins = bundled, oidc` in `kong.conf`)
@@ -311,14 +311,14 @@ docker run -d --name kong-db \
 docker run --rm --link kong-db:kong-db \
   -e KONG_DATABASE=postgres -e KONG_PG_HOST=kong-db \
   -e KONG_PG_PASSWORD=<strong-password> \
-  kong-oidc:2.0.0 kong migrations bootstrap
+  kong-oidc:2.1.0 kong migrations bootstrap
 
 docker run -d --name kong --link kong-db:kong-db \
   -p 8000:8000 -p 8443:8443 \
   -e KONG_DATABASE=postgres -e KONG_PG_HOST=kong-db \
   -e KONG_PG_PASSWORD=<strong-password> \
   -e KONG_ADMIN_LISTEN=127.0.0.1:8001 \
-  kong-oidc:2.0.0
+  kong-oidc:2.1.0
 ```
 
 Never expose the Admin API on a public interface. Keep it on a private
@@ -373,7 +373,7 @@ Keycloak boots.
 
 ## Upgrading
 
-From 1.x to 2.0.0:
+From 1.x to 2.x:
 
 1. **String booleans → booleans.** `ssl_verify: "no"` becomes `ssl_verify: false`.
 2. **`redirect_uri_path` → `redirect_uri`.** The redirect path is now `redirect_uri`.
