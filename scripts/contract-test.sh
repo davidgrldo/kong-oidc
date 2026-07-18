@@ -83,6 +83,12 @@ sed '$a\
 rejects "unsupported private key JWT authentication" "$tmp/private-key-jwt.yml" \
   "expected one of"
 
+sed '$a\
+          validation: magic
+' spec/contract-kong.yml > "$tmp/bad-validation.yml"
+rejects "unsupported validation mode" "$tmp/bad-validation.yml" \
+  "expected one of"
+
 echo "==> checking README documentation"
 if [ ! -s README.md ]; then
   echo "README.md is missing or empty" >&2

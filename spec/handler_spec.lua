@@ -21,6 +21,7 @@ local function setup()
   }
 
   state.introspect = function() return nil, "invalid token" end
+  state.jwt_verify = function() return nil, "no verifier configured" end
   state.authenticate = function() error("must not fall back to browser authentication") end
 
   _G.ngx = {
@@ -91,6 +92,10 @@ local function setup()
     authenticate = function(...)
       state.calls[#state.calls + 1] = "authenticate"
       return state.authenticate(...)
+    end,
+    bearer_jwt_verify = function(...)
+      state.calls[#state.calls + 1] = "jwt_verify"
+      return state.jwt_verify(...)
     end,
   }
   package.loaded["kong.plugins.oidc.utils"] = nil
@@ -252,6 +257,30 @@ t.test("caching does not store failed introspection", function()
   t.equal(calls, 2)
   t.equal(first.status, 401)
   t.equal(second.status, 401)
+end)
+
+t.test("jwt validation verifies locally without introspection", function()
+  local state = setup()
+  state.authorization = "Bearer valid"
+  state.config.validation = "jwt"
+  state.introspect = function() error("must not introspect in jwt mode") end
+  state.jwt_verify = function() return { sub = "user-1", preferred_username = "alice" } end
+  state.handler:access(state.config)
+  local joined = "," .. table.concat(state.calls, ",") .. ","
+  t.equal(joined:find(",jwt_verify,") ~= nil, true)
+  t.equal(joined:find(",introspect,") == nil, true)
+  t.equal(state.ctx.authenticated_credential.sub, "user-1")
+  t.equal(state.set["X-Userinfo"] ~= nil, true)
+end)
+
+t.test("jwt validation rejects an invalid token", function()
+  local state = setup()
+  state.authorization = "Bearer forged"
+  state.config.validation = "jwt"
+  state.jwt_verify = function() return nil, "invalid signature" end
+  local result = state.handler:access(state.config)
+  t.equal(result.status, 401)
+  t.equal(state.logs[#state.logs], "OIDC bearer validation failed: invalid signature")
 end)
 
 t.test("browser errors are generic and session options are explicit", function()

@@ -16,7 +16,8 @@ local function validate(config)
   if not ok then return nil, err end
   ok, err = secure_url(config.introspection_endpoint, config.allow_insecure_http)
   if not ok then return nil, err end
-  if config.bearer_only and missing(config.introspection_endpoint) then
+  if config.bearer_only and config.validation ~= "jwt"
+      and missing(config.introspection_endpoint) then
     return nil, "bearer_only requires introspection_endpoint"
   end
   if not config.bearer_only then
@@ -60,6 +61,11 @@ return {
               one_of = { "client_secret_basic", "client_secret_post" },
           } },
           { bearer_only = { type = "boolean", default = false } },
+          { validation = {
+              type = "string",
+              default = "introspection",
+              one_of = { "introspection", "jwt" },
+          } },
           { introspection_cache_ttl = { type = "number", default = 0 } },
           { realm = { type = "string", default = "kong", custom_validator = validate_realm } },
           { redirect_uri = { type = "string" } },

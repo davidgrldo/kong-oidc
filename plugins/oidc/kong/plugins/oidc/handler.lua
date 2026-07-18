@@ -46,9 +46,16 @@ function Handler:access(config)
   local options = utils.get_options(config)
   local bearer = utils.bearer_present(kong.request.get_header("authorization"))
   if bearer or config.bearer_only then
-    local response, err = introspect(config, options)
+    local response, err
+    if config.validation == "jwt" then
+      -- Verify the token signature locally against the issuer's JWKS. No
+      -- per-request round-trip to the provider (and no revocation check).
+      response, err = openidc.bearer_jwt_verify(options)
+    else
+      response, err = introspect(config, options)
+    end
     if err or not response or response.active == false then
-      kong.log.err("OIDC introspection failed: ", err or "inactive token")
+      kong.log.err("OIDC bearer validation failed: ", err or "inactive token")
       return unauthorized(config.realm)
     end
     utils.inject_identity({ user = response })

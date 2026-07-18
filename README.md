@@ -141,8 +141,9 @@ All options live under the plugin's `config` record.
 | `timeout` | number | *(none)* | HTTP timeout in **milliseconds** for OIDC calls (passed to `lua-resty-http` `set_timeout`). |
 | `introspection_endpoint_auth_method` | one_of | `client_secret_basic` | `client_secret_basic` or `client_secret_post`. |
 | `token_endpoint_auth_method` | one_of | `client_secret_post` | `client_secret_basic`, `client_secret_post`, or `client_secret_jwt`. |
-| `bearer_only` | boolean | `false` | When true, only bearer-token introspection is used (no browser flow). |
-| `introspection_cache_ttl` | number | `0` | Seconds to cache active introspection results (see [Introspection caching](#introspection-caching)). `0` disables caching. |
+| `bearer_only` | boolean | `false` | When true, only bearer-token validation is used (no browser flow). |
+| `validation` | one_of | `introspection` | How bearer tokens are validated: `introspection` (RFC 7662) or `jwt` (local JWKS signature check). See [Validation modes](#validation-modes). |
+| `introspection_cache_ttl` | number | `0` | Seconds to cache active introspection results (see [Introspection caching](#introspection-caching)). `0` disables caching. Ignored when `validation=jwt`. |
 | `realm` | string | `kong` | Realm sent in `WWW-Authenticate` on `401`. |
 | `redirect_uri` | string | *(none)* | Authorization-code callback path. Required for browser mode. |
 | `scope` | string | `openid` | OIDC scopes requested. |
@@ -170,6 +171,34 @@ header is routed to introspection (never to the browser flow). If
 `introspection_endpoint` is not configured and the issuer's discovery document
 does not publish one, such requests always fail with `401` — configure
 `introspection_endpoint` explicitly if mixed traffic is expected.
+
+## Validation modes
+
+Bearer tokens are validated one of two ways, chosen by `validation`:
+
+- **`introspection`** (default) — RFC 7662 introspection: one round-trip to the
+  provider per token, which reflects **revocation immediately** and works with
+  opaque (non-JWT) tokens. Cache it with
+  [`introspection_cache_ttl`](#introspection-caching).
+- **`jwt`** — the token's signature is verified **locally** against the issuer's
+  JWKS (fetched from `discovery`). No per-request round-trip and no
+  `introspection_endpoint` needed, but a revoked token stays valid until it
+  expires. Only works for JWT access tokens (e.g. Keycloak).
+
+```yaml
+config:
+  bearer_only: true
+  validation: jwt
+  discovery: https://issuer/.well-known/openid-configuration
+```
+
+For production `jwt` throughput, let `lua-resty-openidc` cache the discovery
+document and signing keys by declaring shared dicts (otherwise they are fetched
+per request):
+
+```sh
+KONG_NGINX_HTTP_LUA_SHARED_DICT="discovery 1m; jwks 1m"
+```
 
 ## Introspection caching
 

@@ -16,3 +16,18 @@ services:
           introspection_endpoint_auth_method: client_secret_basic
           bearer_only: true
           allow_insecure_http: true
+  - name: echo-jwt
+    url: http://httpbin:80
+    routes:
+      - name: echo-jwt
+        paths: ["/echo-jwt"]
+        strip_path: true
+    plugins:
+      - name: oidc
+        config:
+          client_id: kong-client
+          client_secret: kong-secret
+          discovery: http://keycloak:8080/realms/kong/.well-known/openid-configuration
+          bearer_only: true
+          validation: jwt
+          allow_insecure_http: true
