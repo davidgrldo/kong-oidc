@@ -37,7 +37,12 @@ end
 
 function M.inject_identity(response)
   if response.user then
-    local user = response.user
+    -- Shallow-copy before mutating: with introspection caching, response.user
+    -- may be a table shared across requests from kong.cache (mlcache returns
+    -- the same reference on a hit). Copying keeps per-request derived fields
+    -- out of the cached object.
+    local user = {}
+    for k, v in pairs(response.user) do user[k] = v end
     user.id = user.sub
     user.username = user.preferred_username
     -- Kong 3.x PDK: record the credential so kong.client.get_credential() and
