@@ -1,8 +1,8 @@
 package = "kong-oidc"
-version = "2.0.0-1"
+version = "2.1.0-1"
 source = {
   url = "git+https://github.com/davidgrldo/kong-oidc.git",
-  tag = "v2.0.0",
+  tag = "v2.1.0",
   dir = "kong-oidc/plugins/oidc",
 }
 description = {
@@ -17,9 +17,11 @@ Built for Kong OSS 3.9.3 on lua-resty-openidc 1.8.0. A modified Apache-2.0
 fork of the Nokia kong-oidc plugin, modernized for Kong 3.x.
 
 Highlights:
-- Bearer/API mode: introspection with 401 on failure (no browser fallback)
+- Bearer/API mode: introspection with 401 on failure (no browser fallback),
+  optional kong.cache introspection caching, or local JWT (JWKS) validation
 - Browser mode: authorization-code flow with encrypted session cookies
-- Exact-path filters (no Lua patterns), TLS verification on by default
+- Exact-path and segment-boundary prefix filters (no Lua patterns), TLS
+  verification on by default
 - Identity headers (X-Userinfo / X-ID-Token / X-Access-Token) stripped from
   client requests and re-injected from verified identity to prevent spoofing
 - Typed Kong 3 schema with cross-field validation (HTTPS endpoints,

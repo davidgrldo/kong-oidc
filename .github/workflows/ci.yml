@@ -22,7 +22,7 @@ jobs:
       - name: Rockspec lint
         run: |
           docker run --rm -v "$PWD/plugins/oidc:/r" -w /r kong:3.9.3 \
-            luarocks lint kong-oidc-2.0.0-1.rockspec
+            luarocks lint kong-oidc-2.1.0-1.rockspec
 
       - name: Unit tests
         run: |
