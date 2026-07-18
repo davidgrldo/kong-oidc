@@ -11,6 +11,34 @@ local function unauthorized(realm)
   })
 end
 
+-- Validate a bearer token by introspection, optionally caching active results
+-- in kong.cache. TTL honors the token's `exp`, capped by introspection_cache_ttl
+-- so a revoked token is trusted for at most that many seconds. Failures and
+-- inactive tokens are never cached.
+local function introspect(config, options)
+  local ttl_max = config.introspection_cache_ttl or 0
+  if ttl_max <= 0 then
+    return openidc.introspect(options)
+  end
+
+  local token = utils.bearer_token(kong.request.get_header("authorization"))
+  if not token then
+    return openidc.introspect(options)
+  end
+
+  local key = "oidc_introspect:" .. ngx.md5((options.introspection_endpoint or "") .. "|" .. token)
+  return kong.cache:get(key, nil, function()
+    local response, err = openidc.introspect(options)
+    if err or not response or response.active == false then
+      return nil, err or "inactive token"
+    end
+    local ttl = response.exp and (response.exp - ngx.time()) or ttl_max
+    if ttl > ttl_max then ttl = ttl_max end
+    if ttl <= 0 then return nil, "token expired" end
+    return response, nil, ttl
+  end)
+end
+
 function Handler:access(config)
   utils.clear_identity_headers()
   if not filter.should_process(config.filters, kong.request.get_path()) then return end
@@ -18,7 +46,7 @@ function Handler:access(config)
   local options = utils.get_options(config)
   local bearer = utils.bearer_present(kong.request.get_header("authorization"))
   if bearer or config.bearer_only then
-    local response, err = openidc.introspect(options)
+    local response, err = introspect(config, options)
     if err or not response or response.active == false then
       kong.log.err("OIDC introspection failed: ", err or "inactive token")
       return unauthorized(config.realm)

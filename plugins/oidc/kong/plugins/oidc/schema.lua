@@ -60,6 +60,7 @@ return {
               one_of = { "client_secret_basic", "client_secret_post" },
           } },
           { bearer_only = { type = "boolean", default = false } },
+          { introspection_cache_ttl = { type = "number", default = 0 } },
           { realm = { type = "string", default = "kong", custom_validator = validate_realm } },
           { redirect_uri = { type = "string" } },
           { scope = { type = "string", default = "openid" } },

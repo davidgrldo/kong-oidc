@@ -8,8 +8,13 @@ function M.clear_identity_headers()
   end
 end
 
+function M.bearer_token(value)
+  if type(value) ~= "string" then return nil end
+  return value:match("^%s*[Bb][Ee][Aa][Rr][Ee][Rr]%s+(%S+)")
+end
+
 function M.bearer_present(value)
-  return type(value) == "string" and value:match("^%s*[Bb][Ee][Aa][Rr][Ee][Rr]%s+%S+") ~= nil
+  return M.bearer_token(value) ~= nil
 end
 
 function M.get_options(config)
@@ -35,7 +40,9 @@ function M.inject_identity(response)
     local user = response.user
     user.id = user.sub
     user.username = user.preferred_username
-    ngx.ctx.authenticated_credential = user
+    -- Kong 3.x PDK: record the credential so kong.client.get_credential() and
+    -- credential-aware plugins see it (no consumer mapping yet — see README).
+    kong.client.authenticate(nil, user)
     kong.service.request.set_header("X-Userinfo", ngx.encode_base64(cjson.encode(user)))
   end
   if response.id_token then

@@ -140,6 +140,7 @@ All options live under the plugin's `config` record.
 | `introspection_endpoint_auth_method` | one_of | `client_secret_basic` | `client_secret_basic` or `client_secret_post`. |
 | `token_endpoint_auth_method` | one_of | `client_secret_post` | `client_secret_basic`, `client_secret_post`, or `client_secret_jwt`. |
 | `bearer_only` | boolean | `false` | When true, only bearer-token introspection is used (no browser flow). |
+| `introspection_cache_ttl` | number | `0` | Seconds to cache active introspection results (see [Introspection caching](#introspection-caching)). `0` disables caching. |
 | `realm` | string | `kong` | Realm sent in `WWW-Authenticate` on `401`. |
 | `redirect_uri` | string | *(none)* | Authorization-code callback path. Required for browser mode. |
 | `scope` | string | `openid` | OIDC scopes requested. |
@@ -166,6 +167,30 @@ header is routed to introspection (never to the browser flow). If
 `introspection_endpoint` is not configured and the issuer's discovery document
 does not publish one, such requests always fail with `401` — configure
 `introspection_endpoint` explicitly if mixed traffic is expected.
+
+## Introspection caching
+
+By default (`introspection_cache_ttl=0`), **every** bearer request triggers one
+introspection round-trip to the provider. Under high API traffic that makes the
+provider a bottleneck and a single point of failure.
+
+Set `introspection_cache_ttl` to a positive number of seconds to cache active
+introspection results in Kong's shared cache (`kong.cache`, no `lua_shared_dict`
+setup needed). The cache entry's lifetime is the token's own `exp`, capped by
+`introspection_cache_ttl`; failed or inactive tokens are never cached.
+
+```yaml
+config:
+  bearer_only: true
+  introspection_endpoint: https://issuer/introspect
+  introspection_cache_ttl: 30   # trust an introspection result for up to 30s
+```
+
+**Security trade-off:** a token revoked at the provider is still honored from
+cache until its entry expires, so a revoked token can remain valid for up to
+`introspection_cache_ttl` seconds. Pick the smallest value that gives you the
+throughput you need. For JWT access tokens, local signature verification (a
+future `validation: jwt` mode) will avoid the round-trip entirely.
 
 ## Security
 

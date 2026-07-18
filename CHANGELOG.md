@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `introspection_cache_ttl` config: cache active RFC 7662 introspection results
+  in `kong.cache` (no `lua_shared_dict` setup needed). Entry lifetime honors the
+  token's `exp`, capped by the setting; failed/inactive tokens are never cached.
+  Defaults to `0` (disabled — unchanged behavior). Relieves the per-request
+  round-trip to the provider under high API traffic.
+
+### Fixed
+
+- Record the authenticated credential via the Kong 3.x PDK
+  (`kong.client.authenticate`) instead of writing `ngx.ctx.authenticated_credential`
+  directly (a Kong 0.x/1.x convention).
+
 ## 2.0.0 - 2026-07-18
 
 ### Breaking changes
