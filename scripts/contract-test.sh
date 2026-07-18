@@ -66,6 +66,12 @@ rejects "empty filter" "$tmp/empty-filter.yml" \
   "filter entries must be non-empty absolute paths"
 
 sed '$a\
+          filters_prefix: ["public"]
+' spec/contract-kong.yml > "$tmp/non-absolute-prefix.yml"
+rejects "non-absolute filter prefix" "$tmp/non-absolute-prefix.yml" \
+  "filter entries must be non-empty absolute paths"
+
+sed '$a\
           realm: kong\"evil
 ' spec/contract-kong.yml > "$tmp/quoted-realm.yml"
 rejects "realm with double quote" "$tmp/quoted-realm.yml" \

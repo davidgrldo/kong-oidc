@@ -154,6 +154,7 @@ All options live under the plugin's `config` record.
 | `logout_path` | string | `/logout` | Path that ends the browser session. |
 | `redirect_after_logout_uri` | string | `/` | Post-logout redirect target. |
 | `filters` | array | `[]` | Exact absolute paths to bypass authentication. |
+| `filters_prefix` | array | `[]` | Absolute path prefixes (segment-boundary) to bypass authentication. |
 
 ### Modes
 
@@ -238,15 +239,22 @@ mapping is a candidate for a future release.
 
 ## Filters
 
-`filters` is an array of **exact absolute paths** that bypass authentication.
-Matching is a strict string equality, not a prefix or Lua pattern:
+Two independent lists bypass authentication:
+
+- **`filters`** — **exact absolute paths** (strict string equality, never a Lua
+  pattern).
+- **`filters_prefix`** — absolute path **prefixes**, matched on segment
+  boundaries.
 
 ```yaml
 filters: ["/health", "/metrics"]
+filters_prefix: ["/public", "/api/v1/docs"]
 ```
 
-- `/health` is skipped; `/health-admin` is **not** (no prefix match).
-- Entries must be non-empty and start with `/`.
+- `filters`: `/health` is skipped; `/health-admin` is **not**.
+- `filters_prefix`: `/public` skips `/public` and `/public/anything`, but **not**
+  `/publicity` (the boundary is `/`, so a prefix can't leak onto sibling paths).
+- Entries in both lists must be non-empty and start with `/`.
 
 ## DB-less
 

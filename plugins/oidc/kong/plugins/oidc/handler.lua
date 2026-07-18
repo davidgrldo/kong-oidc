@@ -41,7 +41,7 @@ end
 
 function Handler:access(config)
   utils.clear_identity_headers()
-  if not filter.should_process(config.filters, kong.request.get_path()) then return end
+  if not filter.should_process(config.filters, config.filters_prefix, kong.request.get_path()) then return end
 
   local options = utils.get_options(config)
   local bearer = utils.bearer_present(kong.request.get_header("authorization"))

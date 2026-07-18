@@ -85,6 +85,11 @@ return {
               default = {},
               elements = { type = "string", len_min = 0, custom_validator = validate_filter },
           } },
+          { filters_prefix = {
+              type = "array",
+              default = {},
+              elements = { type = "string", len_min = 0, custom_validator = validate_filter },
+          } },
         },
         custom_validator = validate,
     } },
