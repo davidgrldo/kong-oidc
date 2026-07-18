@@ -66,6 +66,12 @@ rejects "empty filter" "$tmp/empty-filter.yml" \
   "filter entries must be non-empty absolute paths"
 
 sed '$a\
+          filters_prefix: ["public"]
+' spec/contract-kong.yml > "$tmp/non-absolute-prefix.yml"
+rejects "non-absolute filter prefix" "$tmp/non-absolute-prefix.yml" \
+  "filter entries must be non-empty absolute paths"
+
+sed '$a\
           realm: kong\"evil
 ' spec/contract-kong.yml > "$tmp/quoted-realm.yml"
 rejects "realm with double quote" "$tmp/quoted-realm.yml" \
@@ -75,6 +81,12 @@ sed '$a\
           token_endpoint_auth_method: private_key_jwt
 ' spec/contract-kong.yml > "$tmp/private-key-jwt.yml"
 rejects "unsupported private key JWT authentication" "$tmp/private-key-jwt.yml" \
+  "expected one of"
+
+sed '$a\
+          validation: magic
+' spec/contract-kong.yml > "$tmp/bad-validation.yml"
+rejects "unsupported validation mode" "$tmp/bad-validation.yml" \
   "expected one of"
 
 echo "==> checking README documentation"

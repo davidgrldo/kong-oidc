@@ -1,7 +1,9 @@
 # kong-oidc
 
-> **Drop-in OpenID Connect & token introspection for Kong Gateway 3.x** — turn any
-> upstream service into an authenticated one without touching its code.
+> **OpenID Connect & token introspection for Kong Gateway 3.x** — put any upstream
+> service behind authentication without changing its code. A modern successor to
+> the Nokia `kong-oidc` plugin (config is **not** 1:1 compatible — see
+> [Upgrading](#upgrading)).
 
 [![CI](https://github.com/davidgrldo/kong-oidc/actions/workflows/ci.yml/badge.svg)](https://github.com/davidgrldo/kong-oidc/actions/workflows/ci.yml)
 [![Kong](https://img.shields.io/badge/Kong-OSS%203.9.3-002659?logo=kong&logoColor=white)](https://konghq.com/)
@@ -139,8 +141,9 @@ All options live under the plugin's `config` record.
 | `timeout` | number | *(none)* | HTTP timeout in **milliseconds** for OIDC calls (passed to `lua-resty-http` `set_timeout`). |
 | `introspection_endpoint_auth_method` | one_of | `client_secret_basic` | `client_secret_basic` or `client_secret_post`. |
 | `token_endpoint_auth_method` | one_of | `client_secret_post` | `client_secret_basic`, `client_secret_post`, or `client_secret_jwt`. |
-| `bearer_only` | boolean | `false` | When true, only bearer-token introspection is used (no browser flow). |
-| `introspection_cache_ttl` | number | `0` | Seconds to cache active introspection results (see [Introspection caching](#introspection-caching)). `0` disables caching. |
+| `bearer_only` | boolean | `false` | When true, only bearer-token validation is used (no browser flow). |
+| `validation` | one_of | `introspection` | How bearer tokens are validated: `introspection` (RFC 7662) or `jwt` (local JWKS signature check). See [Validation modes](#validation-modes). |
+| `introspection_cache_ttl` | number | `0` | Seconds to cache active introspection results (see [Introspection caching](#introspection-caching)). `0` disables caching. Ignored when `validation=jwt`. |
 | `realm` | string | `kong` | Realm sent in `WWW-Authenticate` on `401`. |
 | `redirect_uri` | string | *(none)* | Authorization-code callback path. Required for browser mode. |
 | `scope` | string | `openid` | OIDC scopes requested. |
@@ -152,6 +155,7 @@ All options live under the plugin's `config` record.
 | `logout_path` | string | `/logout` | Path that ends the browser session. |
 | `redirect_after_logout_uri` | string | `/` | Post-logout redirect target. |
 | `filters` | array | `[]` | Exact absolute paths to bypass authentication. |
+| `filters_prefix` | array | `[]` | Absolute path prefixes (segment-boundary) to bypass authentication. |
 
 ### Modes
 
@@ -167,6 +171,34 @@ header is routed to introspection (never to the browser flow). If
 `introspection_endpoint` is not configured and the issuer's discovery document
 does not publish one, such requests always fail with `401` — configure
 `introspection_endpoint` explicitly if mixed traffic is expected.
+
+## Validation modes
+
+Bearer tokens are validated one of two ways, chosen by `validation`:
+
+- **`introspection`** (default) — RFC 7662 introspection: one round-trip to the
+  provider per token, which reflects **revocation immediately** and works with
+  opaque (non-JWT) tokens. Cache it with
+  [`introspection_cache_ttl`](#introspection-caching).
+- **`jwt`** — the token's signature is verified **locally** against the issuer's
+  JWKS (fetched from `discovery`). No per-request round-trip and no
+  `introspection_endpoint` needed, but a revoked token stays valid until it
+  expires. Only works for JWT access tokens (e.g. Keycloak).
+
+```yaml
+config:
+  bearer_only: true
+  validation: jwt
+  discovery: https://issuer/.well-known/openid-configuration
+```
+
+For production `jwt` throughput, let `lua-resty-openidc` cache the discovery
+document and signing keys by declaring shared dicts (otherwise they are fetched
+per request):
+
+```sh
+KONG_NGINX_HTTP_LUA_SHARED_DICT="discovery 1m; jwks 1m"
+```
 
 ## Introspection caching
 
@@ -236,15 +268,22 @@ mapping is a candidate for a future release.
 
 ## Filters
 
-`filters` is an array of **exact absolute paths** that bypass authentication.
-Matching is a strict string equality, not a prefix or Lua pattern:
+Two independent lists bypass authentication:
+
+- **`filters`** — **exact absolute paths** (strict string equality, never a Lua
+  pattern).
+- **`filters_prefix`** — absolute path **prefixes**, matched on segment
+  boundaries.
 
 ```yaml
 filters: ["/health", "/metrics"]
+filters_prefix: ["/public", "/api/v1/docs"]
 ```
 
-- `/health` is skipped; `/health-admin` is **not** (no prefix match).
-- Entries must be non-empty and start with `/`.
+- `filters`: `/health` is skipped; `/health-admin` is **not**.
+- `filters_prefix`: `/public` skips `/public` and `/public/anything`, but **not**
+  `/publicity` (the boundary is `/`, so a prefix can't leak onto sibling paths).
+- Entries in both lists must be non-empty and start with `/`.
 
 ## DB-less
 
@@ -298,6 +337,17 @@ management network and bind it to loopback where possible.
   (`echo -n '<value>' | base64 -d | wc -c`).
 - **`OIDC endpoints must use HTTPS`** — endpoints are `http://`. Only acceptable
   with `allow_insecure_http=true`, for local dev.
+- **Browser flow loops or redirects to the wrong scheme behind a TLS-terminating
+  proxy/LB** (e.g. an F5 in front of Kong, TLS terminated at the edge, plain
+  `http` on the hop to Kong). The authorization redirect and callback are built
+  from the scheme Kong sees, which is `http` on that hop. Fixes:
+  - Set an **absolute `https://` `redirect_uri`** so the callback URL is correct
+    regardless of the internal hop (and register it verbatim at the provider).
+  - Let Kong honor the edge scheme: set `trusted_ips` to the proxy and ensure it
+    forwards `X-Forwarded-Proto: https`, so Kong treats the request as HTTPS.
+  - Keep `allow_insecure_http=false` (the default): the browser talks HTTPS to
+    the edge, so the `Secure` session cookie is still sent. Only set it to `true`
+    if an OIDC endpoint itself is plain `http`.
 
 Run the test suite to isolate behavior:
 

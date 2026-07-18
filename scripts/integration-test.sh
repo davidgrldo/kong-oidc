@@ -73,4 +73,16 @@ code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/echo/headers
 [ "$code" = "401" ] || { echo "expected 401 for missing token, got $code" >&2; exit 1; }
 echo "   ok: 401 on missing token"
 
+echo "==> jwt mode: valid token verified locally (JWKS) -> 200 with X-Userinfo"
+body=$(curl -sf -H "Authorization: Bearer $token" http://127.0.0.1:8000/echo-jwt/headers)
+printf '%s' "$body" | tr ',' '\n' | grep -iq 'x-userinfo' \
+  || { echo "jwt mode: X-Userinfo not injected" >&2; printf '%s\n' "$body" >&2; exit 1; }
+echo "   ok: jwt-verified request reached upstream with identity"
+
+echo "==> jwt mode: invalid token -> 401"
+code=$(curl -s -o /dev/null -w '%{http_code}' \
+  -H "Authorization: Bearer not-a-real-token" http://127.0.0.1:8000/echo-jwt/headers)
+[ "$code" = "401" ] || { echo "jwt mode: expected 401 for invalid token, got $code" >&2; exit 1; }
+echo "   ok: jwt mode rejects an invalid token"
+
 echo "==> integration test passed"

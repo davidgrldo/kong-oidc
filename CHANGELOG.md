@@ -9,12 +9,26 @@
   token's `exp`, capped by the setting; failed/inactive tokens are never cached.
   Defaults to `0` (disabled — unchanged behavior). Relieves the per-request
   round-trip to the provider under high API traffic.
+- `validation` config (`introspection` | `jwt`): `jwt` mode verifies the bearer
+  token signature locally against the issuer's JWKS via
+  `openidc.bearer_jwt_verify`, avoiding the per-request introspection round-trip
+  (no revocation check; JWT tokens only). `bearer_only` no longer requires an
+  `introspection_endpoint` in `jwt` mode.
+- `filters_prefix` config: bypass authentication by absolute path prefix, matched
+  on segment boundaries (`/public` matches `/public` and `/public/x`, not
+  `/publicity`). `filters` stays exact-match.
 
 ### Fixed
 
 - Record the authenticated credential via the Kong 3.x PDK
   (`kong.client.authenticate`) instead of writing `ngx.ctx.authenticated_credential`
   directly (a Kong 0.x/1.x convention).
+
+### Documentation
+
+- Reframe the "drop-in" tagline as a successor to `nokia/kong-oidc` (config is
+  not 1:1 compatible). Add a reverse-proxy / `X-Forwarded-Proto` troubleshooting
+  note for TLS-terminating load balancers. Document consumer-mapping scope.
 
 ## 2.0.0 - 2026-07-18
 
