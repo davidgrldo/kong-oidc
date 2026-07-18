@@ -227,6 +227,13 @@ forging identity headers to reach upstream services. The injected headers are:
 - `X-ID-Token` — base64-encoded JSON of the ID token (browser flow).
 - `X-Access-Token` — the verified access token.
 
+The identity is also recorded as the Kong credential via
+`kong.client.authenticate`, so credential-aware plugins work — e.g. Rate
+Limiting with `limit_by: credential`. The plugin does **not** yet map the
+identity to a Kong **Consumer** entity, so consumer-scoped features (ACL,
+`limit_by: consumer`, per-consumer plugin config) will not see it. Consumer
+mapping is a candidate for a future release.
+
 ## Filters
 
 `filters` is an array of **exact absolute paths** that bypass authentication.
