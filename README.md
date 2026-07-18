@@ -1,7 +1,9 @@
 # kong-oidc
 
-> **Drop-in OpenID Connect & token introspection for Kong Gateway 3.x** — turn any
-> upstream service into an authenticated one without touching its code.
+> **OpenID Connect & token introspection for Kong Gateway 3.x** — put any upstream
+> service behind authentication without changing its code. A modern successor to
+> the Nokia `kong-oidc` plugin (config is **not** 1:1 compatible — see
+> [Upgrading](#upgrading)).
 
 [![CI](https://github.com/davidgrldo/kong-oidc/actions/workflows/ci.yml/badge.svg)](https://github.com/davidgrldo/kong-oidc/actions/workflows/ci.yml)
 [![Kong](https://img.shields.io/badge/Kong-OSS%203.9.3-002659?logo=kong&logoColor=white)](https://konghq.com/)
@@ -298,6 +300,17 @@ management network and bind it to loopback where possible.
   (`echo -n '<value>' | base64 -d | wc -c`).
 - **`OIDC endpoints must use HTTPS`** — endpoints are `http://`. Only acceptable
   with `allow_insecure_http=true`, for local dev.
+- **Browser flow loops or redirects to the wrong scheme behind a TLS-terminating
+  proxy/LB** (e.g. an F5 in front of Kong, TLS terminated at the edge, plain
+  `http` on the hop to Kong). The authorization redirect and callback are built
+  from the scheme Kong sees, which is `http` on that hop. Fixes:
+  - Set an **absolute `https://` `redirect_uri`** so the callback URL is correct
+    regardless of the internal hop (and register it verbatim at the provider).
+  - Let Kong honor the edge scheme: set `trusted_ips` to the proxy and ensure it
+    forwards `X-Forwarded-Proto: https`, so Kong treats the request as HTTPS.
+  - Keep `allow_insecure_http=false` (the default): the browser talks HTTPS to
+    the edge, so the `Secure` session cookie is still sent. Only set it to `true`
+    if an OIDC endpoint itself is plain `http`.
 
 Run the test suite to isolate behavior:
 
